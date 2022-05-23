@@ -639,6 +639,23 @@ func (s ConstructionService) CreateOperationDescription(
 		return nil, fmt.Errorf("currency info doesn't match between the operations")
 	}
 
+	// TODO(madhur) - if it is EXPORT/IMPORT command then don't match currency - just match the symbol
+	// Also verify if those are AVAX since staking is only for native currency
+	// Create a new operation description for staking and return the parser
+	if isStakingOp(operations[0].Type) {
+		if operations[0].Type == mapper.OpImport {
+			if types.Hash(firstCurrency) != types.Hash(mapper.AvaxCurrency) || types.Hash(secondCurrency) != types.Hash(mapper.AvaxUTXOCurrency){
+				return nil, fmt.Errorf("staking currency has to be AVAX with 18 decimals for C-Chain and 9 Decimals for P-Chain")
+			}
+		} else if operations[0].Type == mapper.OpExport {
+			if types.Hash(firstCurrency) != types.Hash(mapper.AvaxUTXOCurrency) || types.Hash(secondCurrency) != types.Hash(mapper.AvaxUTXOCurrency){
+				return nil, fmt.Errorf("staking currency for EXPORT Op has to ")
+			}
+		}
+
+		// Making sure the amount matches based on decimal system
+	}
+
 	if types.Hash(firstCurrency) == types.Hash(mapper.AvaxCurrency) {
 		return s.createOperationDescriptionNative(), nil
 	}
@@ -653,6 +670,75 @@ func (s ConstructionService) CreateOperationDescription(
 	return s.createOperationDescriptionERC20(firstCurrency), nil
 }
 
+// This description handles EXPORT/IMPORT and ADD_VALIDATOR operation.
+// Since staking involves C-Chain (Account Based) and P-Chain (UTXO based), we have
+// both type of currencies in here
+// C-Chain - 18 decimals
+// P-Chain - 9 decimals
+func (s ConstructionService) createOperationDescriptionStaking(opType string) []*parser.OperationDescription {
+	var descriptions []*parser.OperationDescription
+
+	if mapper.OpAddValidator == opType {
+		stakingAddValidOp := parser.OperationDescription{
+			Type: opType,
+			Account: &parser.AccountDescription{
+				Exists: true,
+			},
+			Amount: &parser.AmountDescription{
+				Exists:   true,
+				Sign:     parser.NegativeAmountSign,
+				Currency: mapper.AvaxUTXOCurrency,
+			},
+		}
+
+		descriptions = append(descriptions, &stakingAddValidOp)
+		return descriptions
+	}
+
+	var stakingOpFirst parser.OperationDescription
+	if mapper.OpImport == opType {
+		stakingOpFirst = parser.OperationDescription{
+			Type: opType,
+			Account: &parser.AccountDescription{
+				Exists: true,
+			},
+			Amount: &parser.AmountDescription{
+				Exists:   true,
+				Sign:     parser.NegativeAmountSign,
+				Currency: mapper.AvaxCurrency,
+			},
+		}
+	} else {
+		stakingOpFirst = parser.OperationDescription{
+			Type: opType,
+			Account: &parser.AccountDescription{
+				Exists: true,
+			},
+			Amount: &parser.AmountDescription{
+				Exists:   true,
+				Sign:     parser.NegativeAmountSign,
+				Currency: mapper.AvaxUTXOCurrency,
+			},
+		}
+	}
+
+
+	stakingOpSecond := parser.OperationDescription{
+		Type: opType,
+		Account: &parser.AccountDescription{
+			Exists: true,
+		},
+		Amount: &parser.AmountDescription{
+			Exists:   true,
+			Sign:     parser.PositiveAmountSign,
+			Currency: mapper.AvaxUTXOCurrency,
+		},
+	}
+
+	descriptions = append(descriptions, &stakingOpFirst)
+	descriptions = append(descriptions, &stakingOpSecond)
+	return descriptions
+}
 func (s ConstructionService) createOperationDescriptionNative() []*parser.OperationDescription {
 	var descriptions []*parser.OperationDescription
 
@@ -792,4 +878,13 @@ func getTransferMethodID() []byte {
 	hash.Write(transferSignature)
 	methodID := hash.Sum(nil)[:4]
 	return methodID
+}
+
+func isStakingOp(opType string) bool {
+	if opType == mapper.OpImport ||
+		opType == mapper.OpExport ||
+		opType == mapper.OpAddValidator {
+		return true
+	}
+	return false
 }
