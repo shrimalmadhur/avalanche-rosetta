@@ -122,6 +122,7 @@ func main() {
 		[]*types.NetworkIdentifier{network}, // supported networks
 		[]string{},                          // call methods
 		false,                               // mempool coins
+		"",
 	)
 	if err != nil {
 		log.Fatal("server asserter init error:", err)

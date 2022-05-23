@@ -31,6 +31,7 @@ const (
 	OpErc20Transfer = "ERC20_TRANSFER"
 	OpErc20Mint     = "ERC20_MINT"
 	OpErc20Burn     = "ERC20_BURN"
+	OpAddValidator 	= "ADD_VALIDATOR"
 
 	OpErc721TransferSender  = "ERC721_SENDER"
 	OpErc721TransferReceive = "ERC721_RECEIVE"
@@ -58,6 +59,11 @@ var (
 	AvaxCurrency = &types.Currency{
 		Symbol:   "AVAX",
 		Decimals: 18,
+	}
+
+	AvaxUTXOCurrency = &types.Currency{
+		Symbol: "AVAX",
+		Decimals: 9,
 	}
 
 	OperationStatuses = []*types.OperationStatus{
@@ -90,6 +96,13 @@ var (
 		OpErc721TransferSender,
 		OpErc721Mint,
 		OpErc721Burn,
+		OpAddValidator,
+	}
+
+	StakingOpTypes = map[string] interface {
+		OpImport: {},
+		OpExport: {},
+		OpAddValidator: {},
 	}
 
 	CallMethods = []string{
